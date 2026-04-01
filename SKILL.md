@@ -2,7 +2,7 @@
 name: tag-skill
 description: >
   Use when the user asks to tag replies, annotate blocks for later memory
-  extraction, classify content as keep or discard, enforce a compact response
+  extraction, mark the few lines that must survive compaction, enforce a compact response
   envelope with start/end IDs, or create a grep-friendly in-chat checkpoint via
   `/tag` or an explicit memory tag request. Works for Codex, Claude, or similar
   chat agents.
@@ -37,7 +37,7 @@ Use `envelope` mode when the user says things like:
 
 - `tag replies`
 - `annotate blocks`
-- `mark keep vs discard`
+- `mark what to keep`
 - `use start/end ids`
 - `format future replies for memory extraction`
 
@@ -90,8 +90,8 @@ Wrap each tagged reply in a start/end envelope:
 
 ```text
 [start <id>]
-[<category>][<k|d>] content
-[<category>][<k|d>] content
+[<category>] content
+[<category>][k] content
 [End <id>]
 ```
 
@@ -100,7 +100,7 @@ Example:
 ```text
 [start 14]
 [finding][k] SSH to nuc is restored and now routes over utun7.
-[action][d] I re-ran a transient probe to confirm the fix.
+[action] I re-ran a transient probe to confirm the fix.
 [End 14]
 ```
 
@@ -113,7 +113,8 @@ Envelope rules:
 - Continue the established reply id sequence when the thread already has one.
 - If no prior id exists, start from a small integer and increment once per
   assistant reply.
-- Treat `d` as the default. A tagged reply may contain zero `k` blocks.
+- Treat an unmarked line as discardable by default. A tagged reply may contain
+  zero `k` lines.
 - Prefer at most 0 to 2 `k` blocks per reply unless the user explicitly asks
   for a heavier memory capture.
 
@@ -124,30 +125,30 @@ Envelope rules:
 - `tool <id>.<n>`: optional tool-progress block identifier
 - `<category>`: short content class
 - `k`: keep for durable memory
-- `d`: discard for temporary process detail
+- no retention label: discard by default
 
 ## Tool Update Format
 
 When tool-call progress should also be tagged, use:
 
 ```text
-[tool 14.1][action][d] Inspecting the current route to 100.119.126.37.
+[tool 14.1][action] Inspecting the current route to 100.119.126.37.
 ```
 
 Guidelines:
 
 - Use `tool <reply-id>.<n>` for tool-related progress inside a tagged reply.
 - Keep tool blocks brief.
-- Most tool blocks should be `d` unless they capture a durable command, root
-  cause, or reusable workflow.
+- Most tool blocks should be unmarked unless they capture a durable command,
+  root cause, or reusable workflow.
 
 ## Retention Rule
 
-Interpret `k` and `d` strictly as memory-retention value, not urgency.
+Interpret `k` strictly as memory-retention value, not urgency.
 
 - Use `k` only for information that should survive the next session compaction.
-- Use `d` for transient probes, intermediate retries, exploratory dead ends,
-  and one-off operational noise.
+- Leave the line unmarked for transient probes, intermediate retries,
+  exploratory dead ends, and one-off operational noise.
 
 ### `k` Threshold
 
@@ -158,17 +159,17 @@ Use `k` only when all of these are true:
 3. It is not likely to be superseded within a few turns.
 4. It can be stated as a short stable delta, rule, anchor, or decision.
 
-If any of these fail, use `d`.
+If any of these fail, leave the line unmarked.
 
 Rule of thumb:
 
 - `k` means "carry across compaction"
-- `d` means "useful for now, safe to drop later"
+- no retention label means "useful for now, safe to drop later"
 
 Category defaults:
 
-- `action`: usually `d`
-- `result`: usually `d`
+- `action`: usually unmarked
+- `result`: usually unmarked
 - `finding`: `k` only if it is a durable state or root cause
 - `decision`: `k` only if the decision remains operative
 - `meta`: `k` only for a standing protocol or formatting rule
@@ -200,7 +201,7 @@ large taxonomy.
   the labels.
 - The latest explicit rule from the user is authoritative for the current
   thread.
-- If in doubt between `k` and `d`, choose `d`.
+- If in doubt, omit `[k]`.
 - Do not add `[B<n>]` numbering unless the user explicitly asks for it.
 
 ## Compaction Use
