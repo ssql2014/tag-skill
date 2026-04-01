@@ -4,12 +4,16 @@ description: >
   Use when the user asks to tag replies, annotate blocks for later memory
   extraction, classify content as keep or discard, enforce a compact response
   envelope with start/end IDs, or create a grep-friendly in-chat checkpoint via
-  `/tag` or an explicit memory tag request.
+  `/tag` or an explicit memory tag request. Works for Codex, Claude, or similar
+  chat agents.
 ---
 
 # Tag Skill
 
 Use this skill when the user wants structured tags in the conversation.
+
+This skill is agent-agnostic. It is intended to work for Codex, Claude, or
+other terminal/chat agents that can follow a compact reply format.
 
 This skill supports two modes:
 
@@ -39,6 +43,10 @@ Use `envelope` mode when the user says things like:
 
 If the thread already established a tagging convention, keep using it until the
 user changes or stops it.
+
+If the current agent platform has its own native wrapper syntax for skills,
+adapt only the invocation mechanics. Keep the tag semantics and output format
+the same.
 
 ## Checkpoint Mode
 
