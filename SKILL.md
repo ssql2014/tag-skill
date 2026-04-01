@@ -84,15 +84,14 @@ Checkpoint rules:
 
 ## Envelope Mode
 
-Use envelope mode when the user wants normal assistant replies tagged block by
-block.
+Use envelope mode when the user wants normal assistant replies tagged inline.
 
 Wrap each tagged reply in a start/end envelope:
 
 ```text
 [start <id>]
-[B1][<category>][<k|d>] content
-[B2][<category>][<k|d>] content
+[<category>][<k|d>] content
+[<category>][<k|d>] content
 [End <id>]
 ```
 
@@ -100,8 +99,8 @@ Example:
 
 ```text
 [start 14]
-[B1][finding][k] SSH to nuc is restored and now routes over utun7.
-[B2][action][d] I re-ran a transient probe to confirm the fix.
+[finding][k] SSH to nuc is restored and now routes over utun7.
+[action][d] I re-ran a transient probe to confirm the fix.
 [End 14]
 ```
 
@@ -109,7 +108,7 @@ Envelope rules:
 
 - Use a matching `[start <id>] ... [End <id>]` pair for every tagged reply.
 - Keep the same format consistently once the convention starts.
-- Put each meaningful unit in its own block.
+- Put each meaningful unit on its own tagged line.
 - If the response is naturally short, one block is enough.
 - Continue the established reply id sequence when the thread already has one.
 - If no prior id exists, start from a small integer and increment once per
@@ -122,7 +121,6 @@ Envelope rules:
 
 - `start <id>`: start of the reply envelope
 - `End <id>`: end of the same reply envelope
-- `B<n>`: block number inside the current reply
 - `tool <id>.<n>`: optional tool-progress block identifier
 - `<category>`: short content class
 - `k`: keep for durable memory
@@ -203,6 +201,7 @@ large taxonomy.
 - The latest explicit rule from the user is authoritative for the current
   thread.
 - If in doubt between `k` and `d`, choose `d`.
+- Do not add `[B<n>]` numbering unless the user explicitly asks for it.
 
 ## Compaction Use
 
