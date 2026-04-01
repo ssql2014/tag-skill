@@ -1,49 +1,58 @@
 ---
-name: tag
+name: tag-skill
 description: >
-  Use when the user says `/tag`, asks to tag or checkpoint the current work,
-  or wants a grep-friendly memory entry summarizing the conversation since the
-  last tag. Output only a compact in-chat tag block.
+  Use when the user asks to tag replies, annotate blocks for later memory
+  extraction, classify content as keep or discard, enforce a compact response
+  envelope with start/end IDs, or create a grep-friendly in-chat checkpoint via
+  `/tag` or an explicit memory tag request.
 ---
 
-# Tag Memory
+# Tag Skill
 
-Use this skill when the user wants a lightweight checkpoint in the conversation,
-not a file write and not a long report.
+Use this skill when the user wants structured tags in the conversation.
 
-The goal is:
-- summarize work since the last explicit tag in the current conversation
-- assign a small set of stable tags
-- record hard anchors for later lookup
-- emit a grep-friendly block with a fixed token
+This skill supports two modes:
 
-## Output Rules
+1. `checkpoint` mode for a one-shot in-chat memory tag
+2. `envelope` mode for tagging normal replies block by block
 
-Keep the tag compact.
+Pick the mode that matches the user's request. Do not mix both in the same reply
+unless the user explicitly asks for both.
 
-- `slug`: short hyphen-case identifier
-- `tags`: 3 to 8 concise tags
-- `status`: one of `done`, `partial`, `blocked`, `verified`, `followup`
-- `summary`: 1 to 3 short sentences
-- `anchors`: only high-signal identifiers
-  - file paths
-  - hostnames
-  - user ids
-  - commit ids
-  - ticket ids
-  - error strings
+## Mode Selection
 
-Do not dump a full session transcript.
+Use `checkpoint` mode when the user says things like:
 
-## Grep Token And Format
+- `/tag`
+- `tag this`
+- `checkpoint this`
+- `make a memory entry`
+- `summarize this for later grep`
 
-Every tag block must start with:
+Use `envelope` mode when the user says things like:
+
+- `tag replies`
+- `annotate blocks`
+- `mark keep vs discard`
+- `use start/end ids`
+- `format future replies for memory extraction`
+
+If the thread already established a tagging convention, keep using it until the
+user changes or stops it.
+
+## Checkpoint Mode
+
+Use checkpoint mode for a single compact tag block that summarizes the work
+since the last explicit tag or the currently relevant slice of work.
+
+Reply with the tag block directly. Do not add extra explanation before or after
+it.
+
+Every checkpoint block must start with:
 
 ```text
 @@TAG@@
 ```
-
-This token is reserved for grep and should not be changed.
 
 Use exactly this shape:
 
@@ -56,29 +65,108 @@ summary: <1-3 short sentences>
 anchors: <anchor1>; <anchor2>; <anchor3>
 ```
 
-## Response Style
+Checkpoint rules:
 
-Reply with the tag block directly.
+- Keep it compact.
+- Prefer durable nouns and workflow names over prose.
+- Reuse existing tags when possible.
+- Include only high-signal anchors such as file paths, hostnames, user ids,
+  commit ids, ticket ids, or exact error strings.
+- Do not dump the full transcript.
 
-Do not:
-- write files
-- mention scripts
-- add extra explanation before the block
-- turn it into a long report
+## Envelope Mode
 
-## Tag Selection Heuristics
+Use envelope mode when the user wants normal assistant replies tagged block by
+block.
 
-- prefer durable nouns and workflow names over prose
-- reuse existing tags when possible
-- include the main system and outcome
-- include one blocker tag if unresolved
+Wrap each tagged reply in a start/end envelope:
 
-Good examples:
-- `dingtalk,leave-report,email,alice`
-- `openclaw,imap,monitor,mac02`
-- `claude-migration,codex,fallbacks`
+```text
+[start <id>]
+[B1][<category>][<k|d>] content
+[B2][<category>][<k|d>] content
+[End <id>]
+```
 
-Bad examples:
-- `stuff,we-did,a-lot`
-- full sentences
-- ephemeral wording that will not repeat
+Example:
+
+```text
+[start 14]
+[B1][finding][k] SSH to nuc is restored and now routes over utun7.
+[B2][action][d] I re-ran a transient probe to confirm the fix.
+[End 14]
+```
+
+Envelope rules:
+
+- Use a matching `[start <id>] ... [End <id>]` pair for every tagged reply.
+- Keep the same format consistently once the convention starts.
+- Put each meaningful unit in its own block.
+- If the response is naturally short, one block is enough.
+- Continue the established reply id sequence when the thread already has one.
+- If no prior id exists, start from a small integer and increment once per
+  assistant reply.
+
+## Tag Meanings
+
+- `start <id>`: start of the reply envelope
+- `End <id>`: end of the same reply envelope
+- `B<n>`: block number inside the current reply
+- `tool <id>.<n>`: optional tool-progress block identifier
+- `<category>`: short content class
+- `k`: keep for durable memory
+- `d`: discard for temporary process detail
+
+## Tool Update Format
+
+When tool-call progress should also be tagged, use:
+
+```text
+[tool 14.1][action][d] Inspecting the current route to 100.119.126.37.
+```
+
+Guidelines:
+
+- Use `tool <reply-id>.<n>` for tool-related progress inside a tagged reply.
+- Keep tool blocks brief.
+- Most tool blocks should be `d` unless they capture a durable command, root
+  cause, or reusable workflow.
+
+## Retention Rule
+
+Interpret `k` and `d` strictly as memory-retention value, not urgency.
+
+- Use `k` for durable facts, decisions, conventions, root causes, stable
+  commands, and reusable workflow rules.
+- Use `d` for transient probes, intermediate retries, exploratory dead ends,
+  and one-off operational noise.
+
+## Recommended Categories
+
+Prefer this compact set:
+
+- `meta`
+- `finding`
+- `result`
+- `action`
+- `hypothesis`
+- `decision`
+- `risk`
+
+If none fit perfectly, choose the closest short label instead of inventing a
+large taxonomy.
+
+## Style Rules
+
+- Keep tags compact.
+- Do not add framing fluff around tagged output.
+- If the user asks for shorter notation, preserve the semantics and shorten only
+  the labels.
+- The latest explicit rule from the user is authoritative for the current
+  thread.
+
+## When Not To Use
+
+- Do not add tags unless the user asked for tagging, memory labels, structured
+  references, or a previously established convention requires them.
+- If the user explicitly asks to stop tagging, stop immediately.

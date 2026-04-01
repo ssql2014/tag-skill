@@ -1,0 +1,3 @@
+interface:
+  display_name: "Tag Skill"
+  short_description: "Tag replies or create grep-friendly checkpoints"
