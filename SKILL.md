@@ -114,6 +114,9 @@ Envelope rules:
 - Continue the established reply id sequence when the thread already has one.
 - If no prior id exists, start from a small integer and increment once per
   assistant reply.
+- Treat `d` as the default. A tagged reply may contain zero `k` blocks.
+- Prefer at most 0 to 2 `k` blocks per reply unless the user explicitly asks
+  for a heavier memory capture.
 
 ## Tag Meanings
 
@@ -144,10 +147,37 @@ Guidelines:
 
 Interpret `k` and `d` strictly as memory-retention value, not urgency.
 
-- Use `k` for durable facts, decisions, conventions, root causes, stable
-  commands, and reusable workflow rules.
+- Use `k` only for information that should survive the next session compaction.
 - Use `d` for transient probes, intermediate retries, exploratory dead ends,
   and one-off operational noise.
+
+### `k` Threshold
+
+Use `k` only when all of these are true:
+
+1. The fact will still matter after the next compact.
+2. It would be expensive or risky to reconstruct later.
+3. It is not likely to be superseded within a few turns.
+4. It can be stated as a short stable delta, rule, anchor, or decision.
+
+If any of these fail, use `d`.
+
+Rule of thumb:
+
+- `k` means "carry across compaction"
+- `d` means "useful for now, safe to drop later"
+
+Category defaults:
+
+- `action`: usually `d`
+- `result`: usually `d`
+- `finding`: `k` only if it is a durable state or root cause
+- `decision`: `k` only if the decision remains operative
+- `meta`: `k` only for a standing protocol or formatting rule
+- `risk`: `k` only for an ongoing risk that future turns must remember
+
+Latest durable state wins. If a later block supersedes an earlier `k`, the
+earlier one should be treated as discardable during compaction.
 
 ## Recommended Categories
 
@@ -172,6 +202,23 @@ large taxonomy.
   the labels.
 - The latest explicit rule from the user is authoritative for the current
   thread.
+- If in doubt between `k` and `d`, choose `d`.
+
+## Compaction Use
+
+The best later compaction flow is not "keep every `k` line verbatim". Instead:
+
+1. Collect candidate `k` blocks.
+2. Drop any `k` block superseded by a later block on the same topic.
+3. Merge the remainder into a compact state snapshot.
+4. Keep only:
+   - standing conventions
+   - current world state
+   - open blockers and live risks
+   - durable anchors such as paths, ids, hosts, commits
+   - immediate next actions that are still pending
+
+For a fuller recipe, see `references/session-compaction.md`.
 
 ## When Not To Use
 
